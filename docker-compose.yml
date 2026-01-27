@@ -1,0 +1,15 @@
+version: "3.8"
+
+services:
+  mongodb:
+    image: mongo:7.0.5
+    container_name: urlshortener-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: urlshortener
+
+volumes:
+  mongo_data:
