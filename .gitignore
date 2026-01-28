@@ -35,7 +35,11 @@ out/
 
 ### VS Code ###
 .vscode/
+<<<<<<< HEAD
 
 # macOS
 .DS_Store
 **/.DS_Store
+=======
+.DS_Store
+>>>>>>> 974b8451edf44bbb939c695478f20a0fbaee6f77
