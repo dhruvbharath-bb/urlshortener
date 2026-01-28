@@ -9,7 +9,7 @@ public class UrlshortenerApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(UrlshortenerApplication.class, args);
-        System.out.println("OUTPUT IS: " + ShortCodeEncoder.encodeId(82));
+        System.out.println("OUTPUT IS: " + ShortCodeEncoder.encodeId(125521));
 	}
 
 }

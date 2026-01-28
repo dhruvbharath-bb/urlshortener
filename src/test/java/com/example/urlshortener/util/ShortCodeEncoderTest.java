@@ -19,8 +19,8 @@ public class ShortCodeEncoderTest {
 
     @Test
     void encode_shouldEncodeLargerNumber() {
-        String result = ShortCodeEncoder.encodeId(125L);
-        assertEquals("21", result);
+        String result = ShortCodeEncoder.encodeId(125521L);
+        assertEquals("WeX", result);
     }
 
     @Test
