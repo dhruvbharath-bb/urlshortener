@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Optional;
 
 @Service
 public class UrlShortenerServiceImpl implements UrlShortenerService{
@@ -44,6 +45,24 @@ public class UrlShortenerServiceImpl implements UrlShortenerService{
     @Override
     public String createShortUrl(String longUrl){
         return createShortUrl(longUrl,null);
+    }
+
+    @Override
+    public Optional<UrlMapping> getLongUrl(String shortCode){
+        if (shortCode ==null||shortCode.isBlank()){
+            return Optional.empty();
+        }
+        Optional<UrlMapping> optionalMapping = urlRepository.findByShortCode(shortCode);
+        if (optionalMapping.isEmpty()){
+            return Optional.empty();
+        }
+        UrlMapping urlMapping = optionalMapping.get();
+
+        if(urlMapping.getExpiresAt()!=null && urlMapping.getExpiresAt().isBefore(Instant.now())){
+            return Optional.empty(); //for now will handle it later
+        }
+        return Optional.of(urlMapping);
+
     }
 
 }
