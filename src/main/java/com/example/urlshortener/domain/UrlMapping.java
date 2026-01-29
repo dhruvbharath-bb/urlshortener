@@ -19,6 +19,9 @@ public class UrlMapping {
     private Instant createdAt;
     private Instant expiresAt; //Can be null
 
+    protected UrlMapping(){
+        //for MongoDB-SpringData
+    }
 
     public UrlMapping(String shortCode, String longUrl, Instant createdAt, Instant expiresAt) {
         if(shortCode==null||longUrl==null||createdAt==null){
