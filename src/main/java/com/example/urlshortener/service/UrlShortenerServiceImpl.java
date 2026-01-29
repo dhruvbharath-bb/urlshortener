@@ -1,5 +1,6 @@
 package com.example.urlshortener.service;
 
+import com.example.urlshortener.domain.RedirectResult;
 import com.example.urlshortener.domain.UrlMapping;
 import com.example.urlshortener.repository.UrlMappingRepository;
 import com.example.urlshortener.util.ShortCodeEncoder;
@@ -48,20 +49,21 @@ public class UrlShortenerServiceImpl implements UrlShortenerService{
     }
 
     @Override
-    public Optional<UrlMapping> getLongUrl(String shortCode){
+    public RedirectResult resolveRedirect(String shortCode){
         if (shortCode ==null||shortCode.isBlank()){
-            return Optional.empty();
+            return RedirectResult.notFound();
         }
         Optional<UrlMapping> optionalMapping = urlRepository.findByShortCode(shortCode);
         if (optionalMapping.isEmpty()){
-            return Optional.empty();
+            return RedirectResult.notFound();
         }
         UrlMapping urlMapping = optionalMapping.get();
 
         if(urlMapping.getExpiresAt()!=null && urlMapping.getExpiresAt().isBefore(Instant.now())){
-            return Optional.empty(); //for now will handle it later
+            return RedirectResult.expired();//for now will handle it later
         }
-        return Optional.of(urlMapping);
+
+        return RedirectResult.found(urlMapping);
 
     }
 

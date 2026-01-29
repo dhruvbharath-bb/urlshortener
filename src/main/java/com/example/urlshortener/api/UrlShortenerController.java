@@ -2,6 +2,8 @@ package com.example.urlshortener.api;
 
 import com.example.urlshortener.api.dto.CreateShortUrlRequest;
 import com.example.urlshortener.api.dto.CreateShortUrlResponse;
+import com.example.urlshortener.domain.RedirectResult;
+import com.example.urlshortener.domain.RedirectStatus;
 import com.example.urlshortener.domain.UrlMapping;
 import com.example.urlshortener.service.UrlShortenerServiceImpl;
 import org.springframework.http.HttpStatus;
@@ -22,14 +24,14 @@ public class UrlShortenerController {
 
     @GetMapping("/{shortCode}")
     public ResponseEntity<Void> redirect(@PathVariable String shortCode){
-        Optional<UrlMapping> optionalMapping = urlShortenerService.getLongUrl(shortCode);
-        if(optionalMapping.isEmpty()){
+        RedirectResult redirectResult = urlShortenerService.resolveRedirect(shortCode);
+        if(redirectResult.getRedirectStatus()== RedirectStatus.NOT_FOUND){
             return ResponseEntity.notFound().build();
+        } else if (redirectResult.getRedirectStatus()==RedirectStatus.EXPIRED) {
+            return ResponseEntity.status(HttpStatus.GONE).build();
         }
-        UrlMapping urlMapping = optionalMapping.get();
-
         return ResponseEntity.status(HttpStatus.FOUND)
-                .location(URI.create(urlMapping.getLongUrl()))
+                .location(URI.create(redirectResult.getUrlMapping().getLongUrl()))
                 .build();
     }
 
