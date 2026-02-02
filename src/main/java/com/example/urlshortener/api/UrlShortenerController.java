@@ -31,7 +31,7 @@ public class UrlShortenerController {
             return ResponseEntity.status(HttpStatus.GONE).build();
         }
         return ResponseEntity.status(HttpStatus.FOUND)
-                .location(URI.create(redirectResult.getUrlMapping().getLongUrl()))
+                .location(URI.create(redirectResult.getLongUrl()))
                 .build();
     }
 

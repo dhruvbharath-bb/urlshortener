@@ -106,3 +106,39 @@ Note: Redirect endpoints are root-level (not under /api) to match real-world URL
 
 ## V1 Status: Complete
 Includes full create/redirect flow, correct HTTP semantics, and clean domain modeling aligned with the HLD.
+
+## V2 – Redis Redirect Cache
+
+V2 introduces Redis as a read-through cache for redirect resolution.  
+This optimization significantly reduces MongoDB reads on hot paths while preserving the exact same external API behavior as V1.
+
+### Key Characteristics
+
+- Redis is used only for redirect lookups (GET /{shortCode})
+- Cache stores minimal redirect data:
+    - longUrl
+    - expiresAt
+- Cache TTL is aligned with URL expiration
+- Redis is treated as an optional optimization layer
+- Cache failures do not affect correctness or availability
+
+### Design Decisions
+
+- Redis does not store full domain objects (`UrlMapping`)
+- The domain contract (`RedirectResult`) was evolved to support cache-backed redirects
+- Controllers remain completely unaware of Redis
+- MongoDB remains the source of truth
+
+### Failure Handling
+
+- Cache read/write failures fall back to MongoDB
+- Redirects continue to work even if Redis is unavailable
+- Expired URLs are never cached
+
+### API Compatibility
+
+- No API paths, request formats, or response semantics changed from V1
+- API version remains `/api/v1`
+- Redis is fully transparent to API consumers
+
+V2 focuses on performance and scalability improvements without introducing any breaking changes.
