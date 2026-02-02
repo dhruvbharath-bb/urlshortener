@@ -4,15 +4,12 @@ import com.example.urlshortener.api.dto.CreateShortUrlRequest;
 import com.example.urlshortener.api.dto.CreateShortUrlResponse;
 import com.example.urlshortener.domain.RedirectResult;
 import com.example.urlshortener.domain.RedirectStatus;
-import com.example.urlshortener.domain.UrlMapping;
 import com.example.urlshortener.service.UrlShortenerServiceImpl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
-import java.util.Optional;
-
 @RestController
 @RequestMapping("/api/v1")
 public class UrlShortenerController {
@@ -31,7 +28,7 @@ public class UrlShortenerController {
             return ResponseEntity.status(HttpStatus.GONE).build();
         }
         return ResponseEntity.status(HttpStatus.FOUND)
-                .location(URI.create(redirectResult.getUrlMapping().getLongUrl()))
+                .location(URI.create(redirectResult.getLongUrl()))
                 .build();
     }
 

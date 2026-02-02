@@ -1,11 +1,16 @@
 package com.example.urlshortener.service;
 
+import com.example.urlshortener.cache.CachedRedirect;
+import com.example.urlshortener.cache.RedirectCacheRepository;
 import com.example.urlshortener.domain.RedirectResult;
 import com.example.urlshortener.domain.UrlMapping;
 import com.example.urlshortener.repository.UrlMappingRepository;
 import com.example.urlshortener.util.ShortCodeEncoder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
@@ -14,10 +19,14 @@ import java.util.Optional;
 public class UrlShortenerServiceImpl implements UrlShortenerService{
     private final UrlMappingRepository urlRepository;
     private final SequenceGeneratorService sequenceGeneratorService;
+    private final RedirectCacheRepository cacheRepository;
+    private static final Logger log = LoggerFactory.getLogger(UrlShortenerServiceImpl.class);
 
-    public UrlShortenerServiceImpl(UrlMappingRepository urlRepository, SequenceGeneratorService sequenceGeneratorService) {
+
+    public UrlShortenerServiceImpl(UrlMappingRepository urlRepository, SequenceGeneratorService sequenceGeneratorService, RedirectCacheRepository cacheRepository) {
         this.urlRepository = urlRepository;
         this.sequenceGeneratorService = sequenceGeneratorService;
+        this.cacheRepository = cacheRepository;
     }
 
     @Override
@@ -48,23 +57,86 @@ public class UrlShortenerServiceImpl implements UrlShortenerService{
         return createShortUrl(longUrl,null);
     }
 
+    //Will use Read-through redis here
     @Override
-    public RedirectResult resolveRedirect(String shortCode){
-        if (shortCode ==null||shortCode.isBlank()){
+    public RedirectResult resolveRedirect(String shortCode) {
+
+        if (shortCode == null || shortCode.isBlank()) {
             return RedirectResult.notFound();
         }
-        Optional<UrlMapping> optionalMapping = urlRepository.findByShortCode(shortCode);
-        if (optionalMapping.isEmpty()){
+
+        // Try cache first
+        try {
+            Optional<CachedRedirect> cached = cacheRepository.get(shortCode);
+
+            if (cached.isPresent()) {
+                log.debug("Redirect cache HIT for shortCode={}", shortCode);
+
+                CachedRedirect value = cached.get();
+
+                if (value.getExpiresAt() != null
+                        && value.getExpiresAt().isBefore(Instant.now())) {
+                    return RedirectResult.expired();
+                }
+
+                return RedirectResult.found(value.getLongUrl());
+            }
+        } catch (Exception e) {
+            log.warn("Redirect cache READ failed for shortCode={}", shortCode, e);
+        }
+
+        log.debug("Redirect cache MISS for shortCode={}", shortCode);
+
+        // Fallback to MongoDB
+        Optional<UrlMapping> optionalMapping =
+                urlRepository.findByShortCode(shortCode);
+
+        if (optionalMapping.isEmpty()) {
             return RedirectResult.notFound();
         }
-        UrlMapping urlMapping = optionalMapping.get();
 
-        if(urlMapping.getExpiresAt()!=null && urlMapping.getExpiresAt().isBefore(Instant.now())){
-            return RedirectResult.expired();//for now will handle it later
+        UrlMapping mapping = optionalMapping.get();
+
+        if (mapping.getExpiresAt() != null
+                && mapping.getExpiresAt().isBefore(Instant.now())) {
+            return RedirectResult.expired();
         }
 
-        return RedirectResult.found(urlMapping);
+        //Cache population
+        try {
+            long ttlSeconds = calculateTtlSeconds(mapping);
 
+            cacheRepository.put(
+                    shortCode,
+                    new CachedRedirect(mapping.getLongUrl(), mapping.getExpiresAt()),
+                    ttlSeconds
+            );
+
+            log.debug(
+                    "Redirect cached for shortCode={} (ttl={}s)",
+                    shortCode,
+                    ttlSeconds
+            );
+        } catch (Exception e) {
+            log.warn("Redirect cache WRITE failed for shortCode={}", shortCode, e);
+        }
+
+        return RedirectResult.found(mapping);
     }
 
+    // TTL calculation helper
+    private long calculateTtlSeconds(UrlMapping mapping) {
+
+        // No expiry → cache for a bounded time
+        if (mapping.getExpiresAt() == null) {
+            return Duration.ofHours(24).getSeconds();
+        }
+
+        long seconds =
+                Duration.between(Instant.now(), mapping.getExpiresAt())
+                        .getSeconds();
+
+        // Safety: never return zero or negative TTL
+        return Math.max(seconds, 1);
+    }
 }
